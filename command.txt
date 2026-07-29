@@ -1,1 +1,3 @@
 jupyter nbconvert --to html notebooks/01_EDA.ipynb --output-dir reports/ --output EDA_Report.html
+
+jupyter nbconvert --to script nom_du_fichier_a_convertir.ipynb
