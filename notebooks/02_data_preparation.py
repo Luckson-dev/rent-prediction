@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[103]:
-
-
 import os
 import joblib
 import numpy as np
@@ -17,141 +11,98 @@ from sklearn.preprocessing import (
 )
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-
-file_path = os.path.join(os.path.dirname(os.path.abspath(os.getcwd())), "data", "rent_prediction.csv")
-
-df = pd.read_csv(file_path)
+from rent_prediction.utils.get_path import get_filename
 
 
-# In[104]:
+class DATAPreparation:
 
+    def __init__(self, df):
+        self.df = df
+        self.numeric_columns = list(self.df.drop("IdentifiantMaison", axis=1).select_dtypes(include=["number"]).columns)
+        self.category_columns = list(self.df.drop("IdentifiantMaison", axis=1).select_dtypes(include=["object", "str"]).columns)
 
-numeric_cols = list(df.drop("IdentifiantMaison", axis=1).select_dtypes(include=["number"]).columns)
-category_cols = list(df.drop("IdentifiantMaison", axis=1).select_dtypes(include=["object", "str"]).columns)
+    def get_data(self):
+        file_name = get_filename(file_name="rent_prediction.csv")
 
+        df = pd.read_csv(file_name)
 
-# ### Traitement de valeurs maquantes
+        return df
 
-# In[105]:
+    # Traitement de valeurs maquantes
+    def remove_empty_values(self):
+        for col in self.numeric_cols:
+            self.df[col] = self.df[col].fillna(self.df[col].median())
 
+        for col in ['Salon', 'SalleDeBainInterieure', 'Parking', 'Meuble', 'Jardin', 'Quartier']:
+            self.df[col] = self.df[col].fillna(self.df[col].mode()[0])
 
-empty_values = df.isnull().sum().sort_values(ascending=False)
-cols_with_empty_values = empty_values[empty_values > 0]
+        return self.df
 
-plt.figure(figsize=(10, 6))
+    # Lignes en double et Catégories incohérentes
+    def check_duplicated_values(self):
+        print(f"Show duplicated values : {self.df.duplicated()}")
+        # self.df.duplicated().sum()
 
-if len(cols_with_empty_values) > 0:
-    for i, _ in enumerate(cols_with_empty_values):
-        col_name = cols_with_empty_values.index[i]
-        col_value = cols_with_empty_values.values[i]
+        for col in self.category_cols:
+            print(f"{col} --> {self.df[col].dropna().unique()}")
 
-        print(col_name, col_value)
+    def identify_outlier_values(self):
+        for col in self.numeric_cols:
+            lower_limit, large_limit = self.outlier_values(self.df[col].dropna())
+    
+            outliers = self.df[(self.df[col] < lower_limit) | (self.df[col] > large_limit)]
+            print()
+            print(f"{col}: {len(outliers)} valeurs abberantes potentielles (bornes : {lower_limit:.1f} à {large_limit:.1f}) sur {len(self.df[col].dropna())}")
 
-        label = f"Colonne avec les valeurs null : {col_name} ({col_value})"
-        plt.bar(cols_with_empty_values.index, cols_with_empty_values.values, color="r", label=label)
-else:
-    label = "Pas de colonnes avec de valeurs nulles"
-    plt.bar(cols_with_empty_values.index, cols_with_empty_values.values, color="r", label=label)
+    def train_test_data_split(self):
+        train_data, test_data = train_test_split(
+            self.df,
+            test_size=0.25,
+            random_state=45
+        )
 
-plt.legend()
-plt.show()
+        return (train_data, test_data)
 
+    def get_feature_encoding(self):
 
-# In[106]:
+        train_data, _ = self.train_test_data_split()
 
+        for col in ['Salon', 'SalleDeBainInterieure', 'Parking', 'Meuble', 'Jardin']:
+            train_data[col + "_Bin"] = train_data[col].map({"Oui": 1, "Non": 0}).fillna(0).astype(int)
 
-for col in numeric_cols:
-    df[col] = df[col].fillna(df[col].median())
+        encoder = TargetEncoder(smooth=100.0)
+        encoder.fit(train_data[["Quartier"]], train_data["LoyerMensuel_BIF"])
 
-for col in ['Salon', 'SalleDeBainInterieure', 'Parking', 'Meuble', 'Jardin', 'Quartier']:
-    df[col] = df[col].fillna(df[col].mode()[0])
+        encoded_matrix = encoder.transform(train_data[["Quartier"]])
+        train_data["Quartier_Target"] = encoded_matrix[:, 0]
 
-df.isnull().sum()
+        moyennes_par_quartier = train_data.groupby('Quartier')['LoyerMensuel_BIF'].mean()
+        print(moyennes_par_quartier.head(10))
 
+        # train_data["Quartier_Target"].sort_values(ascending=False)
+        print(train_data[["Quartier", "Quartier_Target"]].drop_duplicates().sort_values("Quartier_Target"))
 
-# ### Lignes en double et Catégories incohérentes
+        return (encoder, train_data)
 
-# In[107]:
+    def numeric_transform(self):
+        train_data["LoyerMensuel_Log1"] = np.log1p(train_data["LoyerMensuel_BIF"])
 
+        train_data[["Quartier_Target", "LoyerMensuel_Log1"]].head()
+    
 
-# df.duplicated()
-df.duplicated().sum()
+    
+    # Les valeurs aberrantes
+    def outlier_values(series, limit_lower_percent=0.25, limit_large_percent=0.75):
+        quantile1, quantile3 = series.quantile(limit_lower_percent), series.quantile(limit_large_percent)
+        interquantile_range = quantile3 - quantile1
 
-
-# In[108]:
-
-
-for col in category_cols:
-    print(f"{col} --> {df[col].dropna().unique()}")
-
-
-# ### Les valeurs aberrantes
-
-# In[109]:
-
-
-def outlier_values(series, limit_lower_percent=0.25, limit_large_percent=0.75):
-    quantile1, quantile3 = series.quantile(limit_lower_percent), series.quantile(limit_large_percent)
-    interquantile_range = quantile3 - quantile1
-
-    return quantile1 - (interquantile_range * 1.5), quantile3 + (interquantile_range * 1.5)
-
-for col in numeric_cols:
-    lower_limit, large_limit = outlier_values(df[col].dropna())
-
-    outliers = df[(df[col] < lower_limit) | (df[col] > large_limit)]
-    print()
-    print(f"{col}: {len(outliers)} valeurs abberantes potentielles (bornes : {lower_limit:.1f} à {large_limit:.1f}) sur {len(df[col].dropna())}")
-
-
-# ### Séparation de données d'entrainement et de test
-
-# In[110]:
-
-
-# X = df.drop("LoyerMensuel_BIF", axis=1)
-# y = df["LoyerMensuel_BIF"]
-train_data, test_data = train_test_split(df, test_size=0.25, random_state=45)
-
-path = os.path.join(os.path.dirname(os.path.abspath(os.getcwd())), "data", "test_data.parquet")
-
-train_data.to_parquet(path, index=False)
-print("Données sauvegardées avec succèss")
-
-train_data.head()
-
+        return quantile1 - (interquantile_range * 1.5), quantile3 + (interquantile_range * 1.5)
 
 # ### Encodage de variables catégorielles
 
-# In[114]:
-
-
-for col in ['Salon', 'SalleDeBainInterieure', 'Parking', 'Meuble', 'Jardin']:
-    train_data[col + "_Bin"] = train_data[col].map({"Oui": 1, "Non": 0}).fillna(0).astype(int)
-
-encoder = TargetEncoder(smooth=100.0)
-encoder.fit(train_data[["Quartier"]], train_data["LoyerMensuel_BIF"])
-
-joblib.dump(encoder, "neighbourhood_encoder.joblib")
-
-encoded_matrix = encoder.transform(train_data[["Quartier"]])
-train_data["Quartier_Target"] = encoded_matrix[:, 0]
-
-moyennes_par_quartier = train_data.groupby('Quartier')['LoyerMensuel_BIF'].mean()
-print(moyennes_par_quartier.head(10))
-
-# train_data["Quartier_Target"].sort_values(ascending=False)
-print(train_data[["Quartier", "Quartier_Target"]].drop_duplicates().sort_values("Quartier_Target"))
 
 
 # ### Transformation de variables numériques
-
-# In[112]:
-
-
-train_data["LoyerMensuel_Log1"] = np.log1p(train_data["LoyerMensuel_BIF"])
-
-train_data[["Quartier_Target", "LoyerMensuel_Log1"]].head()
 
 
 # ### Sauvegarde du dataset (processed_dataset.csv)
