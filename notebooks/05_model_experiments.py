@@ -1,29 +1,29 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Expérimentation de models
+# ## Expérimentation de modèles
 
-# In[10]:
+# In[4]:
 
 
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Lasso, Ridge, LinearRegression
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import mean_squared_error, median_absolute_error, r2_score, get_scorer_names
 
 
-# In[18]:
+# In[15]:
 
 
 train_data = pd.read_csv("../data/processed_dataset.csv")
 test_data = pd.read_parquet("../data/test_data.parquet")
 
 X_train = train_data.drop(
-    ["LoyerMensuel_Log1", "IdentifiantMaison"],
+    ["LoyerMensuel_Log1", "LoyerMensuel_BIF", "IdentifiantMaison"],
     axis=1).select_dtypes(include=["number"])
 y_train = train_data["LoyerMensuel_Log1"]
 
@@ -32,7 +32,7 @@ print(X_train)
 
 # ### Transformation de données de test
 
-# In[21]:
+# In[16]:
 
 
 # Les variables numériques
@@ -54,14 +54,14 @@ test_data["LoyerMensuel_Log1"] = np.log1p(test_data["LoyerMensuel_BIF"])
 
 # Séparation de X_test et y_test
 X_test = test_data.drop(
-    ["LoyerMensuel_Log1", "IdentifiantMaison"],
+    ["LoyerMensuel_Log1", "LoyerMensuel_BIF", "IdentifiantMaison"],
     axis=1).select_dtypes(include=["number"])
 y_test = test_data["LoyerMensuel_Log1"]
 
 X_test
 
 
-# In[22]:
+# In[17]:
 
 
 def formated_time(second):
@@ -77,7 +77,7 @@ scoring = ["neg_mean_squared_error", "neg_median_absolute_error", "neg_root_mean
 
 # ### Modèle de Régression Linéaire
 
-# In[23]:
+# In[18]:
 
 
 linear_model = LinearRegression()
@@ -97,7 +97,7 @@ print(f"Test R2 : {linear_scores["test_r2"]}")
 
 # ### Modèle Lasso
 
-# In[24]:
+# In[19]:
 
 
 lasso_model = Lasso(alpha=0.2)
@@ -119,7 +119,7 @@ print(f"Test R2 : {lasso_scores["test_r2"]}")
 
 # ### Ridget Model
 
-# In[25]:
+# In[20]:
 
 
 ridge_model = Ridge(alpha=0.1)
@@ -140,7 +140,7 @@ print(f"Test R2 : {ridge_scores["test_r2"]}")
 
 # ### Arbres de décision
 
-# In[26]:
+# In[24]:
 
 
 tree_model = DecisionTreeRegressor()
@@ -159,7 +159,9 @@ print()
 print(f"Test R2 : {tree_scores["test_r2"]}")
 
 
-# In[27]:
+# ### Modèle de Fôrets Aléatoire
+
+# In[22]:
 
 
 random_model = RandomForestRegressor()
@@ -179,8 +181,24 @@ print()
 print(f"Test R2 : {random_scores["test_r2"]}")
 
 
-# In[ ]:
+# ### Modèle de Gradient Boosting
+
+# In[26]:
 
 
+boosting_model = GradientBoostingRegressor(random_state=0)
 
+boosting_scores = cross_validate(boosting_model, X_train, y_train, scoring=scoring)
+
+print(f"Fit Time : {boosting_scores["fit_time"]}")
+print()
+print(f"Score Time : {boosting_scores["score_time"]}")
+print()
+print(f"Test Neg MSE : {boosting_scores["test_neg_mean_squared_error"]}")
+print()
+print(f"Test Neg  MAE : {boosting_scores["test_neg_median_absolute_error"]}")
+print()
+print(f"Test Neg SMSE : {boosting_scores["test_neg_root_mean_squared_error"]}")
+print()
+print(f"Test R2 : {boosting_scores["test_r2"]}")
 
