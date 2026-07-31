@@ -1,0 +1,7 @@
+Run_ID,Modele,Parametres,MAE,RMSE,R2,Observations
+RUN_001,Linear Regression,default,0.130094,0.202821,0.891684,Modèle baseline linéaire. Performance correcte (R2 ~ 0.89) mais sous-ajuste légèrement par rapport aux modèles arborescents.
+RUN_002,Lasso,alpha=0.2,0.132656,0.203615,0.890822,"Régularisation L1 avec alpha=0.2. Résultats similaires à Linear Regression, légère pénalisation des coefficients."
+RUN_003,Ridge,alpha=0.1,0.121228,0.202415,0.892127,Régularisation L2 avec alpha=0.1. Amélioration du MAE moyen rapporté par rapport à Lasso et Linear Regression.
+RUN_004,Decision Tree,default,0.005228,0.018744,0.999008,Très haute précision en validation croisée (R2 > 0.999). Risque potentiel de sur-apprentissage à valider sur le jeu de test.
+RUN_005,Random Forest,default,0.003282,0.022463,0.998472,Excellentes performances (R2 ~ 0.9984). Réduction significative de la variance par rapport à un arbre unique.
+RUN_006,Gradient Boosting,random_state=0,0.003791,0.011695,0.999611,"Meilleure performance globale (RMSE la plus faible ~ 0.0117, R2 ~ 0.9996). Modèle recommandé pour le déploiement."

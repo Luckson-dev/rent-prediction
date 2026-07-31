@@ -85,12 +85,14 @@ class DATAPreparation:
         return (encoder, train_data)
 
     def numeric_transform(self):
+        train_data, _ = self.train_test_data_split()
+
         train_data["LoyerMensuel_Log1"] = np.log1p(train_data["LoyerMensuel_BIF"])
-
         train_data[["Quartier_Target", "LoyerMensuel_Log1"]].head()
+
+        return train_data
     
 
-    
     # Les valeurs aberrantes
     def outlier_values(series, limit_lower_percent=0.25, limit_large_percent=0.75):
         quantile1, quantile3 = series.quantile(limit_lower_percent), series.quantile(limit_large_percent)
