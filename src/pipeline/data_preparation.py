@@ -28,7 +28,6 @@ class DATAPreparation:
 
         self.df = self.df.drop_duplicates(inplace=True)
 
-
         for col in self.numeric_cols:
             self.df[col] = self.df[col].fillna(self.df[col].median())
 
