@@ -2,17 +2,17 @@ import joblib
 import pandas as pd
 import numpy as np
 
-class PredicteurLoyer:
-    def __init__(self, chemin_fichier):
-        données = joblib.load(chemin_fichier)
-        self.modele = données['modele']
-        self.encoder = données['encoder']
-        self.medianes = données['mean']
-        self.modes = données['modes']
-        self.colonnes_attendues = données['colonnes_attendues']
+class RENTPrediction:
+    def __init__(self, file_path):
+        data = joblib.load(file_path)
+        self.boosting_model = data['boosting_model']
+        self.encoder = data['encoder']
+        self.mean = data['mean']
+        self.modes = data['modes']
+        self.columns = data['columns']
 
-    def pretraiter(self, df_brut):
-        df = df_brut.copy()
+    def pipeline(self, in_comming_data):
+        df = in_comming_data.copy()
 
         for col, val in self.mean.items():
             if col in df.columns:
@@ -23,7 +23,8 @@ class PredicteurLoyer:
                 df[col] = df[col].fillna(val)
 
         cols_bin = ['Salon', 'SalleDeBainInterieure', 'Parking', 'Meuble', 'Jardin']
-        for col in cols_bin:
+
+        for col in ["Meuble", "Jardin"]:
             if col in df.columns:
                 df[col + "_Bin"] = df[col].map({"Oui": 1, "Non": 0}).fillna(0).astype(int)
 
@@ -32,19 +33,20 @@ class PredicteurLoyer:
             df["Quartier_Target"] = enc_vals[:, 0]
 
         try:
-            X_final = df[self.colonnes_attendues]
+            X_final = df[self.columns]
         except KeyError as e:
-            raise ValueError(f"Colonne manquante dans les données d'entrée : {e}")
+            raise ValueError(f"Columns doesn't match : {e}")
 
         return X_final
 
-    def predire(self, df_brut):
-        X = self.pretraiter(df_brut)
-        prediction_log = self.modele.predict(X)
-        
-        return np.expm1(prediction_log)
+    def predict(self, in_comming_data):
+        X = self.pipeline(in_comming_data)
 
-# --- Utilisation ---
-# predicteur = PredicteurLoyer("data/modele_production_complet.pkl")
-# nouvelles_donnees = pd.DataFrame([...])
-# prix = predicteur.predire(nouvelles_donnees)   
+        print(f"Processed Data: {X}")
+        print(f"Boosting Model: {self.boosting_model}")
+
+        prediction_log = self.boosting_model.predict(X)
+
+        print(f"Prediction (log scale): {prediction_log}")
+        
+        return np.expm1(prediction_log)  
