@@ -101,7 +101,6 @@ class DATAPreparation:
 
         train_data.to_csv(file_name, index=False)
     
-
     # Les valeurs aberrantes
     @staticmethod
     def outlier_values(series, limit_lower_percent=0.25, limit_large_percent=0.75):

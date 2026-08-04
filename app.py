@@ -7,7 +7,6 @@ import pandas as pd
 import streamlit as st
 from src.prediction import RENTPrediction
 
-
 st.set_page_config(
     page_title="Prédiction de Loyer",
     layout="wide",
@@ -66,7 +65,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 1. Initialisation des états
+# Initialisation des états
 if 'form_data' not in st.session_state:
     st.session_state['form_data'] = {
         'Quartier': "Kinindo",
@@ -86,7 +85,7 @@ liste_quartiers = [
 
 @st.cache_resource
 def load_prediction_model():
-    return RENTPrediction(file_path="data/final_model.pkl")
+    return RENTPrediction(file_path="models/final_model.pkl")
 
 rent_model = load_prediction_model()
 
@@ -146,6 +145,9 @@ with st.form("property_form"):
         input_df = pd.DataFrame([st.session_state['form_data']])
         
         pred = rent_model.predict(input_df)
+        print()
+        print(f"Prediction (expm1 scale): {pred}")
+        print()
         st.session_state['prediction_val'] = pred[0]
 
 metric_placeholder.markdown(f"""

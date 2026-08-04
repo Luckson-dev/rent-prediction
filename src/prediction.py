@@ -1,6 +1,8 @@
 import joblib
 import pandas as pd
 import numpy as np
+from sklearn.metrics import r2_score
+
 
 class RENTPrediction:
     def __init__(self, file_path):
@@ -42,11 +44,12 @@ class RENTPrediction:
     def predict(self, in_comming_data):
         X = self.pipeline(in_comming_data)
 
-        print(f"Processed Data: {X}")
-        print(f"Boosting Model: {self.boosting_model}")
-
         prediction_log = self.boosting_model.predict(X)
 
         print(f"Prediction (log scale): {prediction_log}")
+
+        # score = r2_score(X)
+
+        # print(f"r2 score: {score}")
         
         return np.expm1(prediction_log)  
